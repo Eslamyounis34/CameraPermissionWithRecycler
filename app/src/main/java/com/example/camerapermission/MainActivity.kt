@@ -10,16 +10,25 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import coil.load
 import com.example.camerapermission.databinding.ActivityMainBinding
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
     private val CAMERA_REQUEST_CODE = 1
+
+    var imagesList = arrayListOf<Bitmap>()
+
 
 
     @RequiresApi(Build.VERSION_CODES.M)
@@ -51,6 +60,15 @@ class MainActivity : AppCompatActivity() {
 
         binding.cameraButton.setOnClickListener {
             openCamera()
+        }
+
+        binding.convertBT.setOnClickListener {
+           var partsList= bitmapListToMultipartList(imagesList)
+            Log.e("TestPartsImages",partsList.toString())
+        }
+
+        binding.imagesRecycler.apply {
+            adapter = ImagesAdapter(imagesList)
         }
 
 
@@ -86,8 +104,28 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
             val bitmap = data?.extras?.get("data") as Bitmap
-            binding.image.load(bitmap)
+            imagesList.add(bitmap)
 
+
+            Log.e("ImagesList", imagesList.toString())
+
+            binding.imagesRecycler.apply {
+                adapter = ImagesAdapter(imagesList)
+            }
         }
+    }
+
+    fun bitmapListToMultipartList(bitmapList: List<Bitmap>): List<MultipartBody.Part> {
+        val parts = mutableListOf<MultipartBody.Part>()
+        for (i in bitmapList.indices) {
+            val bitmap = bitmapList[i]
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+            val requestBody = RequestBody.create(
+                "image/jpeg".toMediaTypeOrNull(),
+                byteArrayOutputStream.toByteArray())
+            parts.add(MultipartBody.Part.createFormData("image$i", "image$i.jpg", requestBody))
+        }
+        return parts
     }
 }
